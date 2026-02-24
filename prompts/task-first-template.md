@@ -1,11 +1,30 @@
-# PLACEHOLDER
+# Task-First Prompt Template
 
-## Objective
+SYSTEM ROLE:
+You are implementing exactly one atomic task in an existing codebase.
 
-## Inputs
+AUTHORITATIVE SPECS:
+(List exact file paths + versions)
 
-## Constraints
+TASK:
+(Task ID + title)
 
-## Steps
+SCOPE:
+(Describe exactly what must be implemented.)
 
-## Output Format
+CONSTRAINTS:
+
+- Follow specs exactly.
+- Do not introduce new behavior.
+- Do not expand scope.
+- If ambiguity exists: STOP and request clarification.
+
+OUTPUT REQUIREMENTS:
+
+- Minimal necessary code changes
+- No speculative improvements
+- No architectural expansion
+- No additional features
+
+If any requirement conflicts with authoritative specs:
+The specs win.
