@@ -1,0 +1,214 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  OWNER
+  VIEWER
+}
+
+enum AuditActionType {
+  CREATE_ASSET
+  TOGGLE_ASSET_ACTIVE
+  CHANGE_ASSET_INTERVAL
+  CREATE_INSPECTION_RECORD
+  DELETE_INSPECTION_RECORD
+}
+
+model ObjectClass {
+  id                  String                    @id @default(uuid()) @db.Uuid
+  name                String
+  description         String?
+  is_active           Boolean                   @default(true)
+  created_at          DateTime                  @default(now()) @db.Timestamptz(6)
+  updated_at          DateTime                  @db.Timestamptz(6)
+  organisation_links  OrganisationObjectClass[]
+  assets              Asset[]
+
+  @@index([is_active])
+}
+
+model IntervalOption {
+  id                          String             @id @default(uuid()) @db.Uuid
+  months                      Int
+  is_active                   Boolean            @default(true)
+  created_at                  DateTime           @default(now()) @db.Timestamptz(6)
+  updated_at                  DateTime           @db.Timestamptz(6)
+  assets                      Asset[]
+  inspection_records_at_time  InspectionRecord[]
+
+  @@unique([months])
+  @@index([is_active])
+}
+
+model Organisation {
+  id                   String                    @id @default(uuid()) @db.Uuid
+  organisation_id      String                    @unique @default(uuid()) @db.Uuid
+  name                 String
+  is_active            Boolean                   @default(true)
+  created_at           DateTime                  @default(now()) @db.Timestamptz(6)
+  updated_at           DateTime                  @db.Timestamptz(6)
+  locations            Location[]
+  responsible_roles    ResponsibleRole[]
+  users                User[]
+  organisation_classes OrganisationObjectClass[]
+  assets               Asset[]
+  inspection_records   InspectionRecord[]
+  documents            Document[]
+  audit_logs           AuditLog[]
+
+  @@index([organisation_id])
+}
+
+model Location {
+  id               String         @id @default(uuid()) @db.Uuid
+  organisation_id  String         @db.Uuid
+  name             String
+  address          String?
+  is_active        Boolean        @default(true)
+  created_at       DateTime       @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime       @db.Timestamptz(6)
+  organisation     Organisation   @relation(fields: [organisation_id], references: [organisation_id], onDelete: Restrict, onUpdate: Restrict)
+  assets           Asset[]
+
+  @@index([organisation_id])
+}
+
+model ResponsibleRole {
+  id                  String         @id @default(uuid()) @db.Uuid
+  organisation_id     String         @db.Uuid
+  name                String
+  notification_email  String
+  is_active           Boolean        @default(true)
+  created_at          DateTime       @default(now()) @db.Timestamptz(6)
+  updated_at          DateTime       @db.Timestamptz(6)
+  organisation        Organisation   @relation(fields: [organisation_id], references: [organisation_id], onDelete: Restrict, onUpdate: Restrict)
+  assets              Asset[]
+
+  @@index([organisation_id])
+}
+
+model User {
+  id               String         @id @default(uuid()) @db.Uuid
+  organisation_id  String         @db.Uuid
+  email            String
+  role             UserRole
+  is_active        Boolean        @default(true)
+  created_at       DateTime       @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime       @db.Timestamptz(6)
+  organisation     Organisation   @relation(fields: [organisation_id], references: [organisation_id], onDelete: Restrict, onUpdate: Restrict)
+  uploaded_docs    Document[]
+  audit_logs       AuditLog[]
+
+  @@unique([organisation_id, email])
+  @@index([organisation_id])
+}
+
+model OrganisationObjectClass {
+  id               String         @unique @default(uuid()) @db.Uuid
+  organisation_id  String         @db.Uuid
+  object_class_id  String         @db.Uuid
+  is_enabled       Boolean        @default(false)
+  enabled_at       DateTime?      @db.Timestamptz(6)
+  created_at       DateTime       @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime       @db.Timestamptz(6)
+  organisation     Organisation   @relation(fields: [organisation_id], references: [organisation_id], onDelete: Restrict, onUpdate: Restrict)
+  object_class     ObjectClass    @relation(fields: [object_class_id], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@id([organisation_id, object_class_id])
+  @@index([organisation_id])
+  @@index([object_class_id])
+}
+
+model Asset {
+  id                   String             @id @default(uuid()) @db.Uuid
+  organisation_id      String             @db.Uuid
+  location_id          String             @db.Uuid
+  object_class_id      String             @db.Uuid
+  interval_option_id   String             @db.Uuid
+  responsible_role_id  String             @db.Uuid
+  name                 String
+  last_inspection_date DateTime?          @db.Date
+  inspector_name       String
+  serial_number        String?
+  inventory_number     String?
+  notes                String?
+  is_active            Boolean            @default(true)
+  created_at           DateTime           @default(now()) @db.Timestamptz(6)
+  updated_at           DateTime           @db.Timestamptz(6)
+  organisation         Organisation       @relation(fields: [organisation_id], references: [organisation_id], onDelete: Restrict, onUpdate: Restrict)
+  location             Location           @relation(fields: [location_id], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  object_class         ObjectClass        @relation(fields: [object_class_id], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  interval_option      IntervalOption     @relation(fields: [interval_option_id], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  responsible_role     ResponsibleRole    @relation(fields: [responsible_role_id], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  inspection_records   InspectionRecord[]
+
+  @@index([organisation_id])
+  @@index([location_id])
+  @@index([object_class_id])
+  @@index([interval_option_id])
+  @@index([responsible_role_id])
+}
+
+model InspectionRecord {
+  id                          String          @id @default(uuid()) @db.Uuid
+  organisation_id             String          @db.Uuid
+  asset_id                    String          @db.Uuid
+  inspection_date             DateTime        @db.Date
+  inspector_name              String
+  interval_option_id_at_time  String          @db.Uuid
+  recorded_at                 DateTime        @default(now()) @db.Timestamptz(6)
+  comment                     String?
+  document_id                 String?         @db.Uuid
+  organisation                Organisation    @relation(fields: [organisation_id], references: [organisation_id], onDelete: Restrict, onUpdate: Restrict)
+  asset                       Asset           @relation(fields: [asset_id], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  interval_option_at_time     IntervalOption  @relation(fields: [interval_option_id_at_time], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  document                    Document?       @relation(fields: [document_id], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@index([organisation_id])
+  @@index([asset_id])
+  @@index([interval_option_id_at_time])
+  @@index([document_id])
+}
+
+model Document {
+  id                   String             @id @default(uuid()) @db.Uuid
+  organisation_id      String             @db.Uuid
+  file_name            String
+  mime_type            String
+  storage_pointer      String
+  uploaded_at          DateTime           @default(now()) @db.Timestamptz(6)
+  uploaded_by_user_id  String?            @db.Uuid
+  created_at           DateTime           @default(now()) @db.Timestamptz(6)
+  updated_at           DateTime           @db.Timestamptz(6)
+  organisation         Organisation       @relation(fields: [organisation_id], references: [organisation_id], onDelete: Restrict, onUpdate: Restrict)
+  uploaded_by_user     User?              @relation(fields: [uploaded_by_user_id], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  inspection_records   InspectionRecord[]
+
+  @@index([organisation_id])
+  @@index([uploaded_by_user_id])
+}
+
+model AuditLog {
+  id                  String           @id @default(uuid()) @db.Uuid
+  organisation_id     String           @db.Uuid
+  occurred_at_utc     DateTime         @default(now()) @db.Timestamptz(6)
+  actor_user_id       String?          @db.Uuid
+  action_type         AuditActionType
+  target_entity_type  String
+  target_entity_id    String
+  payload_json        Json             @db.JsonB
+  organisation        Organisation     @relation(fields: [organisation_id], references: [organisation_id], onDelete: Restrict, onUpdate: Restrict)
+  actor_user          User?            @relation(fields: [actor_user_id], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@index([organisation_id])
+  @@index([actor_user_id])
+  @@index([action_type])
+  @@index([target_entity_type, target_entity_id])
+}
