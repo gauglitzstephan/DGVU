@@ -12,7 +12,6 @@ export type InspectionHistoryItem = {
   comment?: string | null;
   intervalOptionId_at_time: string;
   recorded_at: Date;
-  actor_user_id: string | null;
   documentId?: string | null;
 };
 
@@ -57,10 +56,5 @@ export async function listInspectionHistory(
     },
   });
 
-  const items: InspectionHistoryItem[] = inspections.map((inspection) => ({
-    ...inspection,
-    actor_user_id: null,
-  }));
-
-  return { data: items };
+  return { data: inspections };
 }
